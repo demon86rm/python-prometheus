@@ -1,27 +1,19 @@
-from flask import Flask, jsonify, request
-from prometheus_client import make_wsgi_app, Counter, Histogram
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from prometheus_client import start_http_server, Summary
+import random
 import time
-app = Flask(__name__)
-app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
-    '/metrics': make_wsgi_app()
-})
-REQUEST_COUNT = Counter(
-    'app_request_count',
-    'Application Request Count',
-    ['method', 'endpoint', 'http_status']
-)
-REQUEST_LATENCY = Histogram(
-    'app_request_latency_seconds',
-    'Application Request Latency',
-    ['method', 'endpoint']
-)
-@app.route('/')
-def hello():
-    start_time = time.time()
-    REQUEST_COUNT.labels('GET', '/', 200).inc()
-response = jsonify(message='Hello, world!')
-    REQUEST_LATENCY.labels('GET', '/').observe(time.time() - start_time)
-    return response
+
+# Create a metric to track time spent and requests made.
+REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
+
+# Decorate function with metric.
+@REQUEST_TIME.time()
+def process_request(t):
+    """A dummy function that takes some time."""
+    time.sleep(t)
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # Start up the server to expose the metrics.
+    start_http_server(8000)
+    # Generate some requests.
+    while True:
+        process_request(random.random())
